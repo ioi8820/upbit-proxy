@@ -10,7 +10,14 @@ const port = process.env.PORT || 3000;
 const USD_KRW = 1340;
 
 // 코인 리스트 (업비트 & 바이낸스 공통)
-const coins = ['BTC', 'ETH', 'XRP', 'DOGE'];
+const coins = [
+  "BTC", "ETH", "XRP", "DOGE", "ADA", "SOL", "DOT", "AVAX", "MATIC",
+  "TRX", "LINK", "ATOM", "SAND", "AXS", "STX", "ARPA", "GALA", "CHZ",
+  "FTM", "WAVES", "NEAR", "ZIL", "MANA", "ICX", "STORJ", "ENS", "AAVE",
+  "1INCH", "KAVA", "HBAR", "GMT", "LTC", "BCH", "ZRX", "XLM", "IOTA",
+  "BLUR", "IMX", "ARDR", "ONG", "ONT", "VET", "QKC", "CVC", "ANKR"
+];
+
 
 // CORS 허용
 app.use(cors());
