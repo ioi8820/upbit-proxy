@@ -34,7 +34,11 @@ app.get('/coins', (req, res) => {
 // 김치 프리미엄 계산
 app.get('/kimchi/:coin', async (req, res) => {
   const coin = req.params.coin.toUpperCase();
-  if (!coins.includes(coin)) return res.status(404).json({ error: '지원하지 않는 코인입니다.' });
+
+  if (!coins.includes(coin)) {
+    console.log(`[❌] 지원하지 않는 코인 요청됨: ${coin}`);
+    return res.status(404).json({ error: '지원하지 않는 코인입니다.' });
+  }
 
   try {
     const binanceRes = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${coin}USDT`);
@@ -44,6 +48,13 @@ app.get('/kimchi/:coin', async (req, res) => {
     const upbitPrice = upbitRes.data[0].trade_price;
     const kimchi = (((upbitPrice - binancePrice) / binancePrice) * 100).toFixed(2);
 
+    // 👉 로그 출력
+    console.log(`[✅] ${coin} 김치프리미엄 계산 성공`);
+    console.log(`    환율: ${exchangeRate}`);
+    console.log(`    바이낸스 (USDT): ${binanceRes.data.price}`);
+    console.log(`    업비트 (KRW): ${upbitPrice}`);
+    console.log(`    김프: ${kimchi}%`);
+
     res.json({
       coin,
       binance: binancePrice.toFixed(2),
@@ -52,10 +63,11 @@ app.get('/kimchi/:coin', async (req, res) => {
     });
 
   } catch (err) {
-    console.error(err.message);
+    console.error(`[💥] ${coin} 김프 계산 실패:`, err.message);
     res.status(500).json({ error: `가격 정보를 가져올 수 없습니다 (${coin})` });
   }
 });
+
 
 app.listen(port, () => {
   console.log(`✅ Proxy server running on port ${port}`);
