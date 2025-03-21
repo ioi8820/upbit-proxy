@@ -1,32 +1,21 @@
-import express from 'express';
-import cors from 'cors';
-import axios from 'axios';
-
+// server.js
+const express = require('express');
+const cors = require('cors');
+const axios = require('axios');
 const app = express();
 const port = process.env.PORT || 3000;
 
-let exchangeRate = 1350; // 기본 환율 (초기값)
-let coins = ["BTC", "ETH", "XRP", "DOGE"]; // 중복 상장 코인
+// 중복 상장된 코인 리스트 (바이낸스 + 업비트 기준)
+const coins = [
+  "BTC", "ETH", "XRP", "DOGE", "ADA", "SOL", "AVAX", "DOT", "TRX", "MATIC",
+  "LINK", "LTC", "SAND", "AXS", "APE", "ETC", "EOS", "ZIL", "WAVES",
+  "CHZ", "STMX", "CVC", "ANKR", "STORJ", "ICX", "BCH", "NEO"
+];
 
-// CORS 설정
+// CORS 허용
 app.use(cors());
 
-// 환율 업데이트 함수
-const updateExchangeRate = async () => {
-  try {
-    const res = await axios.get('https://api.exchangerate.host/latest?base=USD&symbols=KRW');
-    exchangeRate = res.data.rates.KRW;
-    console.log('✅ 환율 업데이트:', exchangeRate);
-  } catch (error) {
-    console.error('❌ 환율 가져오기 실패:', error.message);
-  }
-};
-
-// 서버 시작 시 + 10분마다 환율 업데이트
-updateExchangeRate();
-setInterval(updateExchangeRate, 10 * 60 * 1000);
-
-// 코인 리스트 제공
+// 코인 리스트 반환
 app.get('/coins', (req, res) => {
   res.json(coins);
 });
@@ -34,26 +23,29 @@ app.get('/coins', (req, res) => {
 // 김치 프리미엄 계산
 app.get('/kimchi/:coin', async (req, res) => {
   const coin = req.params.coin.toUpperCase();
-
   if (!coins.includes(coin)) {
-    console.log(`[❌] 지원하지 않는 코인 요청됨: ${coin}`);
-    return res.status(404).json({ error: '지원하지 않는 코인입니다.' });
+    return res.status(404).json({ error: `지원하지 않는 코인입니다. (${coin})` });
   }
 
   try {
+    // 환율 가져오기
+    const fxRes = await axios.get("https://api.exchangerate.host/latest?base=USD&symbols=KRW");
+    const exchangeRate = fxRes.data.rates?.KRW;
+
+    if (!exchangeRate) {
+      throw new Error("환율 정보를 가져올 수 없습니다.");
+    }
+
+    // 바이낸스 가격 (USDT 기준, KRW로 변환 필요)
     const binanceRes = await axios.get(`https://api.binance.com/api/v3/ticker/price?symbol=${coin}USDT`);
-    const upbitRes = await axios.get(`https://api.upbit.com/v1/ticker?markets=KRW-${coin}`);
-
     const binancePrice = parseFloat(binanceRes.data.price) * exchangeRate;
-    const upbitPrice = upbitRes.data[0].trade_price;
-    const kimchi = (((upbitPrice - binancePrice) / binancePrice) * 100).toFixed(2);
 
-    // 👉 로그 출력
-    console.log(`[✅] ${coin} 김치프리미엄 계산 성공`);
-    console.log(`    환율: ${exchangeRate}`);
-    console.log(`    바이낸스 (USDT): ${binanceRes.data.price}`);
-    console.log(`    업비트 (KRW): ${upbitPrice}`);
-    console.log(`    김프: ${kimchi}%`);
+    // 업비트 가격 (KRW)
+    const upbitRes = await axios.get(`https://api.upbit.com/v1/ticker?markets=KRW-${coin}`);
+    const upbitPrice = upbitRes.data[0].trade_price;
+
+    // 김치 프리미엄 계산
+    const kimchi = (((upbitPrice - binancePrice) / binancePrice) * 100).toFixed(2);
 
     res.json({
       coin,
@@ -61,14 +53,13 @@ app.get('/kimchi/:coin', async (req, res) => {
       upbit: upbitPrice.toFixed(2),
       kimchi
     });
-
-  } catch (err) {
-    console.error(`[💥] ${coin} 김프 계산 실패:`, err.message);
+  } catch (error) {
+    console.error("🚨 오류:", error.message);
     res.status(500).json({ error: `가격 정보를 가져올 수 없습니다 (${coin})` });
   }
 });
 
-
+// 서버 시작
 app.listen(port, () => {
-  console.log(`✅ Proxy server running on port ${port}`);
+  console.log(`✅ 서버 실행 중: http://localhost:${port}`);
 });
